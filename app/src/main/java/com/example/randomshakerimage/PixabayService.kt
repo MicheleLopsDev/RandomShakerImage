@@ -9,7 +9,7 @@ interface PixabayService {
         @Query("key") key: String,
         @Query("q") query: String,
         //@Query("image_type") imageType: String = "photo",
-        @Query("per_page") perPage: Int = 10,
+        @Query("per_page") perPage: Int = 1000,
         @Query("safesearch") safe: Boolean = false
 
     ): PixabayResponse
