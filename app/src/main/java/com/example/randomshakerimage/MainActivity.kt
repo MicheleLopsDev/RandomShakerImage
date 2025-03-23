@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.example.imagesha.ShakeDetector
@@ -126,17 +127,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun vibrate() {
-        val vibrator = this.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (vibrator.hasVibrator()) { // Controlla se il dispositivo supporta la vibrazione
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                vibrator.vibrate(500) // Per versioni più vecchie
-            }
-            Log.d("ShakeDetector", "Vibrazione attivata per 500ms")
-        } else {
-            Log.w("ShakeDetector", "Il dispositivo non supporta la vibrazione")
+        val vibratorService = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
+        if (vibratorService.hasVibrator()) {
+            val vibrationEffect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE) // 50ms di vibrazione
+            vibratorService.vibrate(vibrationEffect)
         }
+
+
     }
 
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
