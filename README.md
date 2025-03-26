@@ -91,11 +91,11 @@ Questo progetto è aperto alla collaborazione! Se vuoi contribuire, ecco come pu
 
 ## Licenza
 
-Questo progetto è distribuito sotto la licenza [inserisci qui la licenza, ad esempio MIT].
+Questo progetto è distribuito sotto la licenza [MIT].
 
 ## Contatti
 
-Per qualsiasi domanda o chiarimento, puoi contattare [il tuo nome o il nome del team] all'indirizzo [la tua email].
+Per qualsiasi domanda o chiarimento, puoi contattare [Michele] all'indirizzo [sentieroluminoso@gmail.com].
 
 ---
 
