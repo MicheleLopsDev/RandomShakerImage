@@ -95,7 +95,7 @@ Questo progetto è distribuito sotto la licenza [MIT].
 
 ## Contatti
 
-Per qualsiasi domanda o chiarimento, puoi contattare [Michele] all'indirizzo [sentieroluminoso@gmail.com].
+Per qualsiasi domanda o chiarimento, puoi contattare [MicheleLopsDev] all'indirizzo [sentieroluminoso@gmail.com].
 
 ---
 
