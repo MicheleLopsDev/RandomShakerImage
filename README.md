@@ -1,6 +1,6 @@
 # RandomShakerImage: Esplorazione dell'API di Pixabay e Sviluppo con Intelligenza Artificiale
 
-## Descrizione del Progetto
+## Descrizione del Progetto 
 
 RandomShakerImage è un progetto pilota creato con l'obiettivo di testare e comprendere il funzionamento delle API del servizio [Pixabay](https://pixabay.com/). L'applicazione recupera immagini casuali da Pixabay, consentendo all'utente di visualizzarle.  Questo progetto è anche un banco di prova per l'utilizzo di strumenti basati sull'intelligenza artificiale (IA) per la generazione e lo sviluppo del codice.
 
