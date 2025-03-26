@@ -1,7 +1,5 @@
 package com.example.randomshakerimage
 
-import android.content.Context
-import android.content.Context.VIBRATOR_SERVICE
 import android.graphics.Matrix
 import android.hardware.Sensor
 import android.hardware.SensorManager
@@ -13,7 +11,6 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.WindowInsetsController
-import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
