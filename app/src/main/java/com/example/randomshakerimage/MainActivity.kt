@@ -5,17 +5,21 @@ import android.content.Context.VIBRATOR_SERVICE
 import android.graphics.Matrix
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
+import android.view.WindowInsetsController
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
 import com.example.imagesha.ShakeDetector
 import kotlinx.coroutines.CoroutineScope
@@ -38,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     // UI components
     private lateinit var searchEditText: EditText
-    private lateinit var searchButton: Button
+    private lateinit var searchButton: ImageButton
     private lateinit var imageView: ImageView
 
     // Image scaling and touch interaction
@@ -56,7 +60,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        // Edit toolbar colour
+        setupToolBar()
 
         // Load API key from properties
         loadApiKey()
@@ -64,11 +69,28 @@ class MainActivity : AppCompatActivity() {
         // Initialize UI components
         initializeUIComponents()
 
+        //default Image on create
+        loadRandomImage()
+
         // Setup sensor and shake detection
         setupShakeDetection()
 
         // Configure image scaling and touch interactions
         setupImageInteractions()
+    }
+
+    private fun setupToolBar() {
+        setContentView(R.layout.activity_main)
+
+        // Check if we're running on Android 10 (API level 29) or higher
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.statusBarColor = ContextCompat.getColor(this, android.R.color.black)
+            //make sure you can see the icon in the status bar
+            window.decorView.windowInsetsController?.setSystemBarsAppearance(
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            )
+        }
     }
 
     /**
@@ -97,7 +119,7 @@ class MainActivity : AppCompatActivity() {
     private fun initializeUIComponents() {
         imageView = findViewById(R.id.imageView)
         searchEditText = findViewById(R.id.searchEditText)
-        searchButton = findViewById(R.id.searchButton)
+        searchButton = findViewById(R.id.imageButton)
         searchEditText.setText(query)
 
         // Configure search button behavior
