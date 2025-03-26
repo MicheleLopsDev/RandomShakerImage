@@ -1,17 +1,17 @@
 package com.example.randomshakerimage
 
-import com.google.gson.GsonBuilder
+import com.example.randomshakerimage.PixaBayClient.okHttpClient
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 /**
- * Singleton object to create and manage Retrofit client for Pixabay API
+ * Singleton object to create and manage Retrofit client for MyMemory API
  */
-object RetrofitClient {
-    // Base URL for Pixabay API
-    private const val BASE_URL = "https://pixabay.com/"
+object MyMemoryClient {
+    // Base URL for MyMemory API
+    private const val BASE_URL = "https://api.mymemory.translated.net/"
 
     // Example Interceptor for OkHttp
     val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -22,19 +22,12 @@ object RetrofitClient {
         .addInterceptor(loggingInterceptor)
         .build()
 
-    // Gson builder with lenient parsing
-    private val gson = GsonBuilder()
-        .setLenient()
-        .create()
-
-
-    // Lazy initialization of Pixabay service
-    val pixabayService: PixabayService by lazy {
+    val instance: MyMemoryService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
             .client(okHttpClient) // Add the OkHttpClient to Retrofit
-            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
-            .create(PixabayService::class.java)
+            .create(MyMemoryService::class.java)
     }
 }

@@ -11,6 +11,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.WindowInsetsController
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -119,9 +120,33 @@ class MainActivity : AppCompatActivity() {
         searchButton = findViewById(R.id.imageButton)
         searchEditText.setText(query)
 
+
+        searchEditText.setOnEditorActionListener(
+            { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    val searchQuery = searchEditText.text.toString().trim().replace(' ' , '+')
+                    if (searchQuery.isNotEmpty()) {
+                        Log.d("MainActivity", "Search started for: $searchQuery")
+                        query = searchQuery
+                        vibrate()
+                        loadRandomImage()
+                    } else {
+                        Log.w("MainActivity", "Search field is empty!")
+                        Toast.makeText(
+                            this,
+                            "Please enter a search term",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    return@setOnEditorActionListener true
+                }
+                false
+            }
+        )
+
         // Configure search button behavior
         searchButton.setOnClickListener {
-            val searchQuery = searchEditText.text.toString().trim()
+            val searchQuery = searchEditText.text.toString().trim().replace(' ' , '+')
             if (searchQuery.isNotEmpty()) {
                 Log.d("MainActivity", "Search started for: $searchQuery")
                 query = searchQuery
@@ -149,6 +174,7 @@ class MainActivity : AppCompatActivity() {
             loadRandomImage()
         }
     }
+
 
     /**
      * Configure image scaling and touch interactions
@@ -194,7 +220,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "Changing image...")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val response = RetrofitClient.pixabayService.searchImagesRaw(
+                val response = PixaBayClient.pixabayService.searchImagesRaw(
                     key = apiKey,
                     query = query
                 )
