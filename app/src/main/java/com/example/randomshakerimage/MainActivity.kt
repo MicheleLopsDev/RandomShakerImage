@@ -1,69 +1,141 @@
 package com.example.randomshakerimage
 
 import android.content.Context
+import android.content.Context.VIBRATOR_SERVICE
 import android.graphics.Matrix
 import android.hardware.Sensor
 import android.hardware.SensorManager
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.os.VibratorManager
-import android.widget.ImageView
-import com.bumptech.glide.Glide
-import com.example.imagesha.ShakeDetector
 import android.util.Log
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
+import com.example.imagesha.ShakeDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
+/**
+ * MainActivity for the Random Shaker Image app
+ * Allows users to search and display random images with shake and zoom interactions
+ * Loads Pixabay API key from properties file
+ */
 class MainActivity : AppCompatActivity() {
 
+    // Sensor and shake detection components
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
     private lateinit var shakeDetector: ShakeDetector
+
+    // UI components
     private lateinit var searchEditText: EditText
     private lateinit var searchButton: Button
     private lateinit var imageView: ImageView
-    // Inserisci la tua chiave API Pixabay qui
-    private val pixabayApiKey = "49473800-b0e37ff4a4576833a14090ca0"
+
+    // Image scaling and touch interaction
     private lateinit var scaleGestureDetector: ScaleGestureDetector
     private var scaleFactor = 1.0f
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var matrix = Matrix()
+
+    // Search query management
     private var query = "nature"
 
+    // Pixabay API key
+    private var pixabayApiKey: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Load API key from properties
+        loadApiKey()
+
+        // Initialize UI components
+        initializeUIComponents()
+
+        // Setup sensor and shake detection
+        setupShakeDetection()
+
+        // Configure image scaling and touch interactions
+        setupImageInteractions()
+    }
+
+    /**
+     * Load Pixabay API key from properties file
+     */
+    private fun loadApiKey() {
+        pixabayApiKey = ApiKeyConfig.loadApiKey(
+            context = this,
+            filename = "api_keys.properties",
+            key = "PIXABAY_API_KEY"
+        )
+
+        // Optionally show a toast if API key is not found
+        if (pixabayApiKey == null) {
+            Toast.makeText(
+                this,
+                "Warning: Pixabay API key not found",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    /**
+     * Initialize UI components and set initial query
+     */
+    private fun initializeUIComponents() {
         imageView = findViewById(R.id.imageView)
         searchEditText = findViewById(R.id.searchEditText)
         searchButton = findViewById(R.id.searchButton)
-        searchEditText.setText(this.query)
-        // Assegna il comportamento al pulsante di ricerca
+        searchEditText.setText(query)
+
+        // Configure search button behavior
         searchButton.setOnClickListener {
-            val query = searchEditText.text.toString().trim() // Legge il testo e rimuove spazi inutili
-            if (query.isNotEmpty()) {
-                Log.d("MainActivity", "Ricerca avviata per: $query")
-                this.query = query
+            val searchQuery = searchEditText.text.toString().trim()
+            if (searchQuery.isNotEmpty()) {
+                Log.d("MainActivity", "Search started for: $searchQuery")
+                query = searchQuery
                 vibrate()
-                loadRandomImage() // Esegui la ricerca con la parola chiave
+                loadRandomImage()
             } else {
-                Log.w("MainActivity", "Il campo di ricerca è vuoto!")
+                Log.w("MainActivity", "Search field is empty!")
+                Toast.makeText(
+                    this,
+                    "Please enter a search term",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
+    }
 
-        // Initialize scaleGestureDetector here
+    /**
+     * Setup shake detection using accelerometer
+     */
+    private fun setupShakeDetection() {
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        shakeDetector = ShakeDetector(this) {
+            Log.i("MainActivity", "Shake detected! Changing image...")
+            loadRandomImage()
+        }
+    }
+
+    /**
+     * Configure image scaling and touch interactions
+     */
+    private fun setupImageInteractions() {
         scaleGestureDetector = ScaleGestureDetector(this, ScaleListener())
-        // Set the onTouchListener here, after scaleGestureDetector is initialized
         imageView.setOnTouchListener { _, event ->
             scaleGestureDetector.onTouchEvent(event)
 
@@ -83,64 +155,82 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
-
-        // Inizializza il sensore e il rilevatore di shake
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        shakeDetector = ShakeDetector(this) {
-            Log.i("MainActivity", "Shake rilevato! Cambio immagine...")
-            loadRandomImage()
-        }
     }
 
+    /**
+     * Load a random image from Pixabay based on current query
+     */
     private fun loadRandomImage() {
-        Log.d("MainActivity", "Cambio immagine... (implementa qui il caricamento da Bing)")
-        // Esegui la ricerca in background usando una coroutine
-        // Esegui la chiamata in una coroutine
+        // Check if API key is available
+        val apiKey = pixabayApiKey
+        if (apiKey == null) {
+            Toast.makeText(
+                this,
+                "Cannot load image: API key missing",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        Log.d("MainActivity", "Changing image...")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = RetrofitClient.pixabayService.searchImagesRaw(
-                    key = pixabayApiKey,
-                    query = this@MainActivity.query
+                    key = apiKey,
+                    query = query
                 )
                 val images = response.hits
                 if (images.isNotEmpty()) {
-                    // Scegli un'immagine a caso dalla lista
                     val randomImage = images[Random.nextInt(images.size)]
-                    val imageUrl = randomImage.largeImageURL  // oppure webformatURL
+                    val imageUrl = randomImage.largeImageURL
 
-                    // Aggiorna l'UI nel thread principale
+                    // Update UI on main thread
                     withContext(Dispatchers.Main) {
                         Glide.with(this@MainActivity)
                             .load(imageUrl)
                             .into(imageView)
-
-
                     }
                 } else {
-                    Log.e("MainActivity", "Nessuna immagine trovata per la query: ${this@MainActivity.query}")
+                    Log.e("MainActivity", "No images found for query: $query")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "No images found for '$query'",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             } catch (e: Exception) {
-                Log.e("MainActivity", "Errore durante la richiesta: ${e.message}", e)
+                Log.e("MainActivity", "Error during request: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Error loading image: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
     }
 
+    /**
+     * Trigger device vibration when button or shake occurs
+     */
     private fun vibrate() {
-        val vibratorService = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-
+        val vibratorService = getSystemService(VIBRATOR_SERVICE) as Vibrator
         if (vibratorService.hasVibrator()) {
-            val vibrationEffect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE) // 50ms di vibrazione
+            val vibrationEffect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
             vibratorService.vibrate(vibrationEffect)
         }
-
-
     }
 
+    /**
+     * Inner class to handle image scaling gestures
+     */
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             scaleFactor *= detector.scaleFactor
-            scaleFactor = maxOf(0.1f, minOf(scaleFactor, 5.0f)) // Limita lo zoom tra 0.1x e 5x
+            scaleFactor = maxOf(0.1f, minOf(scaleFactor, 5.0f)) // Limit zoom between 0.1x and 5x
 
             matrix.setScale(scaleFactor, scaleFactor, detector.focusX, detector.focusY)
             imageView.imageMatrix = matrix
@@ -148,4 +238,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Lifecycle method to register shake detector
+     */
+    override fun onResume() {
+        super.onResume()
+        accelerometer?.let {
+            sensorManager.registerListener(
+                shakeDetector,
+                it,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+        }
+    }
+
+    /**
+     * Lifecycle method to unregister shake detector
+     */
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(shakeDetector)
+    }
 }
