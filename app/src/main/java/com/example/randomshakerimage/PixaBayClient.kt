@@ -9,7 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 /**
  * Singleton object to create and manage Retrofit client for Pixabay API
  */
-object RetrofitClient {
+object PixaBayClient {
     // Base URL for Pixabay API
     private const val BASE_URL = "https://pixabay.com/"
 

@@ -86,6 +86,7 @@ object BingImageScraper {
                 // Return non-empty URL
                 src.takeIf { it.isNotEmpty() }
             }
+
             else -> null
         }
     }

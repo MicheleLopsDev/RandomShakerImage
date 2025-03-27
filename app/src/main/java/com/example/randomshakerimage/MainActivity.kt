@@ -11,6 +11,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.WindowInsetsController
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -37,6 +38,9 @@ class MainActivity : AppCompatActivity() {
     private var accelerometer: Sensor? = null
     private lateinit var shakeDetector: ShakeDetector
 
+    // Crea un'istanza dell'API di MyMemory utilizzando il client Retrofit creato in RetrofitClient
+    private var myMemoryApi = MyMemoryClient.create()
+
     // UI components
     private lateinit var searchEditText: EditText
     private lateinit var searchButton: ImageButton
@@ -50,7 +54,7 @@ class MainActivity : AppCompatActivity() {
     private var matrix = Matrix()
 
     // Search query management
-    private var query = "nature"
+    private var query = "casa"
 
     // Pixabay API key
     private var pixabayApiKey: String? = null
@@ -119,13 +123,39 @@ class MainActivity : AppCompatActivity() {
         searchButton = findViewById(R.id.imageButton)
         searchEditText.setText(query)
 
+
+        searchEditText.setOnEditorActionListener(
+            { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    val searchQuery = searchEditText.text.toString().trim().replace(' ', '+')
+                    if (searchQuery.isNotEmpty()) {
+                        Log.d("MainActivity", "Search started for: $searchQuery")
+                        query = searchQuery
+                        vibrate()
+                        searchText()
+                        loadRandomImage()
+                    } else {
+                        Log.w("MainActivity", "Search field is empty!")
+                        Toast.makeText(
+                            this,
+                            "Please enter a search term",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    return@setOnEditorActionListener true
+                }
+                false
+            }
+        )
+
         // Configure search button behavior
         searchButton.setOnClickListener {
-            val searchQuery = searchEditText.text.toString().trim()
+            val searchQuery = searchEditText.text.toString().trim().replace(' ', '+')
             if (searchQuery.isNotEmpty()) {
                 Log.d("MainActivity", "Search started for: $searchQuery")
                 query = searchQuery
                 vibrate()
+                searchText()
                 loadRandomImage()
             } else {
                 Log.w("MainActivity", "Search field is empty!")
@@ -150,6 +180,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     /**
      * Configure image scaling and touch interactions
      */
@@ -163,6 +194,7 @@ class MainActivity : AppCompatActivity() {
                     lastTouchX = event.x
                     lastTouchY = event.y
                 }
+
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.x - lastTouchX
                     val dy = event.y - lastTouchY
@@ -173,6 +205,33 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             true
+        }
+    }
+
+
+    private fun searchText() {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val translationResponse: MyMemoryResponse = withContext(Dispatchers.IO) {
+                    myMemoryApi.getTranslation(query)  // Chiamata al metodo nell'interfaccia MyMemoryService
+                }
+
+                // Resto del codice invariato
+                if (translationResponse.responseStatus == 200) {
+                    val translatedText = translationResponse.responseData.translatedText
+                    if (translatedText != query) {
+                        query = translatedText
+                    }
+                    Log.d("MainActivity", "Translated Text: $translatedText")
+                } else {
+                    Log.e(
+                        "MainActivity",
+                        "Translation error: ${translationResponse.responseStatus}"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error: ${e.message}")
+            }
         }
     }
 
@@ -194,7 +253,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "Changing image...")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val response = RetrofitClient.pixabayService.searchImagesRaw(
+                val response = PixaBayClient.pixabayService.searchImagesRaw(
                     key = apiKey,
                     query = query
                 )
@@ -238,7 +297,8 @@ class MainActivity : AppCompatActivity() {
     private fun vibrate() {
         val vibratorService = getSystemService(VIBRATOR_SERVICE) as Vibrator
         if (vibratorService.hasVibrator()) {
-            val vibrationEffect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
+            val vibrationEffect =
+                VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
             vibratorService.vibrate(vibrationEffect)
         }
     }
