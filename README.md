@@ -119,7 +119,7 @@ Questo progetto è aperto alla collaborazione! Se vuoi contribuire, ecco come pu
 Per fare funzionare correttamente questo progetto dovete necessariamente creare il file api_keys.properties nella cartella app/src/main/assets.
 il file deve contenere PIXABAY_API_KEY=  che rappresenta la key api del servizio di Pixabay per come reperire la suddetta chiave fare 
 riferimento al loro sito https://pixabay.com/.
-
+ 
 
 ## Licenza 
 
