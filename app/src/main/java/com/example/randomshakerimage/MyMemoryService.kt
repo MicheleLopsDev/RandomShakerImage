@@ -2,7 +2,6 @@ package com.example.randomshakerimage
 
 import retrofit2.http.GET
 import retrofit2.http.Query
-import retrofit2.Call
 
 /**
  * Retrofit service interface for interacting with MyMemory API
@@ -16,9 +15,9 @@ interface MyMemoryService {
      * @return PixabayResponse containing list of images
      */
     @GET("get")
-    suspend fun translateText(
-        @Query("q") text: String,
-        @Query("langpair") langPair: String = "it|eng"
-    ): Call<MyMemoryResponse>
+    suspend fun getTranslation(
+        @Query("q") query: String,
+        @Query("langpair") languagePair: String = "it|en" // Example default
+    ): MyMemoryResponse
 
 }

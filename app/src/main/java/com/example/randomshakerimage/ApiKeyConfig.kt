@@ -24,7 +24,7 @@ object ApiKeyConfig {
             }
         } catch (e: Exception) {
             // Log the error for debugging
-            Log.e("ApiKeyConfig", "Error loading API key: ${e.message}",e)
+            Log.e("ApiKeyConfig", "Error loading API key: ${e.message}", e)
             null
         }
     }

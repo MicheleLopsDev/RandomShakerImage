@@ -33,10 +33,3 @@ data class Match(
     val match: Double,
     val penalty: Int
 )
-
-//{
-//    "responseData": {
-//    "translatedText": "Ciao"
-//},
-//    "quotaFinished": false
-//}
