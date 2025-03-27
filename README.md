@@ -113,7 +113,7 @@ Questo progetto è aperto alla collaborazione! Se vuoi contribuire, ecco come pu
 *   **Invia Pull Request:** Se hai risolto un bug o aggiunto una nuova funzionalità, invia una "Pull Request" per farla integrare nel progetto.
 * **Aiuta a migliorare il codice:** Se vedi un modo per migliorare il codice, puoi aprire una "Pull Request" per proporre le tue modifiche.
 
-## Licenza
+## Licenza 
 
         Questo progetto è distribuito sotto la licenza MIT.
 
