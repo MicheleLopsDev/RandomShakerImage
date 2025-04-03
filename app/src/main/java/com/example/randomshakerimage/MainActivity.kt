@@ -127,21 +127,7 @@ class MainActivity : AppCompatActivity() {
         searchEditText.setOnEditorActionListener(
             { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    val searchQuery = searchEditText.text.toString().trim().replace(' ', '+')
-                    if (searchQuery.isNotEmpty()) {
-                        Log.d("MainActivity", "Search started for: $searchQuery")
-                        query = searchQuery
-                        vibrate()
-                        searchText()
-                        loadRandomImage()
-                    } else {
-                        Log.w("MainActivity", "Search field is empty!")
-                        Toast.makeText(
-                            this,
-                            "Please enter a search term",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    action()
                     return@setOnEditorActionListener true
                 }
                 false
@@ -150,21 +136,25 @@ class MainActivity : AppCompatActivity() {
 
         // Configure search button behavior
         searchButton.setOnClickListener {
-            val searchQuery = searchEditText.text.toString().trim().replace(' ', '+')
-            if (searchQuery.isNotEmpty()) {
-                Log.d("MainActivity", "Search started for: $searchQuery")
-                query = searchQuery
-                vibrate()
-                searchText()
-                loadRandomImage()
-            } else {
-                Log.w("MainActivity", "Search field is empty!")
-                Toast.makeText(
-                    this,
-                    "Please enter a search term",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            action()
+        }
+    }
+
+    private fun action() {
+        val searchQuery = searchEditText.text.toString().trim().replace(' ', '+')
+        if (searchQuery.isNotEmpty()) {
+            Log.d("MainActivity", "Search started for: $searchQuery")
+            query = searchQuery
+            vibrate()
+            searchText()
+
+        } else {
+            Log.w("MainActivity", "Search field is empty!")
+            Toast.makeText(
+                this,
+                "Please enter a search term",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -209,6 +199,12 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    fun removeHtmlTags(input: String): String {
+        // Usa una regex per rimuovere i tag HTML/XML
+        return input.replace(Regex("<.*?>"), "")
+    }
+
+
     private fun searchText() {
         CoroutineScope(Dispatchers.Main).launch {
             try {
@@ -220,8 +216,11 @@ class MainActivity : AppCompatActivity() {
                 if (translationResponse.responseStatus == 200) {
                     val translatedText = translationResponse.responseData.translatedText
                     if (translatedText != query) {
-                        query = translatedText
+                        query = removeHtmlTags(translatedText).trim().toLowerCase()
+                        searchEditText = findViewById(R.id.searchEditText)
+                        searchEditText.setText(query)
                     }
+                    loadRandomImage()
                     Log.d("MainActivity", "Translated Text: $translatedText")
                 } else {
                     Log.e(
