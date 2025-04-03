@@ -1,29 +1,36 @@
 package com.example.randomshakerimage
 
+import android.app.WallpaperManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Matrix
-import android.hardware.Sensor
-import android.hardware.SensorManager
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
+import android.view.GestureDetector
 import android.view.MotionEvent
-import android.view.ScaleGestureDetector
 import android.view.WindowInsetsController
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import com.bumptech.glide.Glide
-import com.example.imagesha.ShakeDetector
+import com.google.android.material.navigation.NavigationView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlin.random.Random
 
 /**
@@ -33,11 +40,6 @@ import kotlin.random.Random
  */
 class MainActivity : AppCompatActivity() {
 
-    // Sensor and shake detection components
-    private lateinit var sensorManager: SensorManager
-    private var accelerometer: Sensor? = null
-    private lateinit var shakeDetector: ShakeDetector
-
     // Crea un'istanza dell'API di MyMemory utilizzando il client Retrofit creato in RetrofitClient
     private var myMemoryApi = MyMemoryClient.create()
 
@@ -45,19 +47,32 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchEditText: EditText
     private lateinit var searchButton: ImageButton
     private lateinit var imageView: ImageView
+    private lateinit var radioGroup: RadioGroup
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var navigationView: NavigationView
 
-    // Image scaling and touch interaction
-    private lateinit var scaleGestureDetector: ScaleGestureDetector
-    private var scaleFactor = 1.0f
-    private var lastTouchX = 0f
-    private var lastTouchY = 0f
-    private var matrix = Matrix()
+    // GestureDetector, creato tramite una funzione dedicata
+    private lateinit var gestureDetector: GestureDetector
+
 
     // Search query management
-    private var query = "casa"
+    private var query = "house"
 
     // Pixabay API key
     private var pixabayApiKey: String? = null
+    private var currentScaleTypeIndex = 0
+
+    // Array con i diversi ScaleType che vogliamo ciclare
+    private val scaleTypes = arrayOf(
+        ImageView.ScaleType.CENTER_CROP,
+        ImageView.ScaleType.FIT_CENTER,
+        ImageView.ScaleType.CENTER_INSIDE,
+        ImageView.ScaleType.FIT_XY,
+        ImageView.ScaleType.MATRIX,
+        ImageView.ScaleType.CENTER,
+        ImageView.ScaleType.FIT_START,
+        ImageView.ScaleType.FIT_END
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,14 +85,6 @@ class MainActivity : AppCompatActivity() {
         // Initialize UI components
         initializeUIComponents()
 
-        //default Image on create
-        loadRandomImage()
-
-        // Setup sensor and shake detection
-        setupShakeDetection()
-
-        // Configure image scaling and touch interactions
-        setupImageInteractions()
     }
 
     private fun setupToolBar() {
@@ -118,11 +125,44 @@ class MainActivity : AppCompatActivity() {
      * Initialize UI components and set initial query
      */
     private fun initializeUIComponents() {
+
+        setContentView(R.layout.activity_main)
+
+        drawerLayout = findViewById(R.id.drawer_layout)
+
         imageView = findViewById(R.id.imageView)
         searchEditText = findViewById(R.id.searchEditText)
         searchButton = findViewById(R.id.imageButton)
         searchEditText.setText(query)
+        radioGroup = findViewById(R.id.languageRadioGroup)
 
+        navigationView = findViewById(R.id.navigation_view)
+
+        navigationView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.scale_center_crop -> imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                R.id.scale_fit_center -> imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                R.id.scale_fit_xy -> imageView.scaleType = ImageView.ScaleType.FIT_XY
+                R.id.scale_center_inside -> imageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+                R.id.scale_center -> imageView.scaleType = ImageView.ScaleType.CENTER
+                R.id.scale_matrix -> imageView.scaleType = ImageView.ScaleType.MATRIX
+                R.id.scale_fit_start -> imageView.scaleType = ImageView.ScaleType.FIT_START
+                R.id.scale_fit_end -> imageView.scaleType = ImageView.ScaleType.FIT_END
+            }
+            drawerLayout.closeDrawer(GravityCompat.START)
+            true
+        }
+        imageView.scaleType = scaleTypes[currentScaleTypeIndex]
+
+        // Crea il GestureDetector usando la funzione separata
+        gestureDetector = createGestureDetector()
+
+
+        // Imposta l'OnTouchListener sull'ImageView per usare il GestureDetector
+        imageView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            true
+        }
 
         searchEditText.setOnEditorActionListener(
             { _, actionId, _ ->
@@ -158,46 +198,94 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Setup shake detection using accelerometer
-     */
-    private fun setupShakeDetection() {
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        shakeDetector = ShakeDetector(this) {
-            Log.i("MainActivity", "Shake detected! Changing image...")
-            loadRandomImage()
+
+
+    private fun changeScaleType() {
+        currentScaleTypeIndex = (currentScaleTypeIndex + 1) % scaleTypes.size
+        imageView.scaleType = scaleTypes[currentScaleTypeIndex]
+        Toast.makeText(this, "ScaleType: ${scaleTypes[currentScaleTypeIndex]}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun setWallpaperWithScaleType() {
+        val drawable = imageView.drawable as? BitmapDrawable
+        val originalBitmap = drawable?.bitmap ?: return
+
+        val wallpaperManager = WallpaperManager.getInstance(applicationContext)
+        val screenWidth = wallpaperManager.desiredMinimumWidth
+        try {
+            val screenHeight = wallpaperManager.desiredMinimumHeight
+
+            val transformedBitmap = transformBitmapToScaleType(originalBitmap, screenWidth, screenHeight, imageView.scaleType)
+
+            wallpaperManager.setBitmap(transformedBitmap)
+            Toast.makeText(this, "Sfondo impostato con ${imageView.scaleType}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Errore nell'impostazione dello sfondo", Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
         }
     }
 
+    private fun transformBitmapToScaleType(bitmap: Bitmap, width: Int, height: Int, scaleType: ImageView.ScaleType): Bitmap {
+        val matrix = Matrix()
+        val scaleX = width.toFloat() / bitmap.width
+        val scaleY = height.toFloat() / bitmap.height
 
-    /**
-     * Configure image scaling and touch interactions
-     */
-    private fun setupImageInteractions() {
-        scaleGestureDetector = ScaleGestureDetector(this, ScaleListener())
-        imageView.setOnTouchListener { _, event ->
-            scaleGestureDetector.onTouchEvent(event)
-
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    lastTouchX = event.x
-                    lastTouchY = event.y
-                }
-
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.x - lastTouchX
-                    val dy = event.y - lastTouchY
-                    matrix.postTranslate(dx, dy)
-                    imageView.imageMatrix = matrix
-                    lastTouchX = event.x
-                    lastTouchY = event.y
-                }
+        when (scaleType) {
+            ImageView.ScaleType.FIT_CENTER -> {
+                val scale = minOf(scaleX, scaleY)
+                matrix.postScale(scale, scale)
+                val newX = (width - bitmap.width * scale) / 2
+                val newY = (height - bitmap.height * scale) / 2
+                matrix.postTranslate(newX, newY)
             }
-            true
+            ImageView.ScaleType.CENTER_CROP -> {
+                val scale = maxOf(scaleX, scaleY)
+                matrix.postScale(scale, scale)
+                val newX = (width - bitmap.width * scale) / 2
+                val newY = (height - bitmap.height * scale) / 2
+                matrix.postTranslate(newX, newY)
+            }
+            ImageView.ScaleType.FIT_XY -> {
+                matrix.postScale(scaleX, scaleY)
+            }
+            ImageView.ScaleType.CENTER_INSIDE -> {
+                val scale = minOf(scaleX, scaleY, 1f)
+                matrix.postScale(scale, scale)
+                val newX = (width - bitmap.width * scale) / 2
+                val newY = (height - bitmap.height * scale) / 2
+                matrix.postTranslate(newX, newY)
+            }
+            ImageView.ScaleType.CENTER -> {
+                val newX = (width - bitmap.width) / 2f
+                val newY = (height - bitmap.height) / 2f
+                matrix.postTranslate(newX, newY)
+            }
+            ImageView.ScaleType.MATRIX -> {
+                // Esempio: ruota di 45 gradi e scala al 75%
+                matrix.postScale(0.75f, 0.75f)
+                matrix.postRotate(45f, bitmap.width / 2f, bitmap.height / 2f)
+                matrix.postTranslate((width - bitmap.width) / 2f, (height - bitmap.height) / 2f)
+            }
+            ImageView.ScaleType.FIT_START -> {
+                val scale = minOf(scaleX, scaleY)
+                matrix.postScale(scale, scale)
+            }
+            ImageView.ScaleType.FIT_END -> {
+                val scale = minOf(scaleX, scaleY)
+                matrix.postScale(scale, scale)
+                val translateY = height - (bitmap.height * scale)
+                matrix.postTranslate(0f, translateY)
+            }
+            else -> return bitmap
         }
-    }
 
+        val outputBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(outputBitmap)
+        canvas.drawColor(Color.BLACK) // Sfondo nero per le aree vuote
+        canvas.drawBitmap(bitmap, matrix, null)
+
+        return outputBitmap
+    }
 
     fun removeHtmlTags(input: String): String {
         // Usa una regex per rimuovere i tag HTML/XML
@@ -211,22 +299,26 @@ class MainActivity : AppCompatActivity() {
                 val translationResponse: MyMemoryResponse = withContext(Dispatchers.IO) {
                     myMemoryApi.getTranslation(query)  // Chiamata al metodo nell'interfaccia MyMemoryService
                 }
-
-                // Resto del codice invariato
-                if (translationResponse.responseStatus == 200) {
-                    val translatedText = translationResponse.responseData.translatedText
-                    if (translatedText != query) {
-                        query = removeHtmlTags(translatedText).trim().toLowerCase()
-                        searchEditText = findViewById(R.id.searchEditText)
-                        searchEditText.setText(query)
+                if (radioGroup.checkedRadioButtonId == R.id.italianoRadioButton) {
+                    if (translationResponse.responseStatus == 200) {
+                        val translatedText = translationResponse.responseData.translatedText
+                        if (translatedText != query) {
+                            query = removeHtmlTags(translatedText).trim()
+                                .lowercase(Locale.getDefault())
+                            searchEditText = findViewById(R.id.searchEditText)
+                            searchEditText.setText(query)
+                        }
+                        radioGroup.check(R.id.englishRadioButton)
+                        loadRandomImage()
+                        Log.d("MainActivity", "Translated Text: $translatedText")
+                    } else {
+                        Log.e(
+                            "MainActivity",
+                            "Translation error: ${translationResponse.responseStatus}"
+                        )
                     }
-                    loadRandomImage()
-                    Log.d("MainActivity", "Translated Text: $translatedText")
                 } else {
-                    Log.e(
-                        "MainActivity",
-                        "Translation error: ${translationResponse.responseStatus}"
-                    )
+                    loadRandomImage()
                 }
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error: ${e.message}")
@@ -302,39 +394,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Inner class to handle image scaling gestures
-     */
-    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScale(detector: ScaleGestureDetector): Boolean {
-            scaleFactor *= detector.scaleFactor
-            scaleFactor = maxOf(0.1f, minOf(scaleFactor, 5.0f)) // Limit zoom between 0.1x and 5x
-
-            matrix.setScale(scaleFactor, scaleFactor, detector.focusX, detector.focusY)
-            imageView.imageMatrix = matrix
-            return true
-        }
-    }
 
     /**
-     * Lifecycle method to register shake detector
+     * Crea e restituisce un GestureDetector configurato per cambiare lo ScaleType dell'ImageView.
      */
-    override fun onResume() {
-        super.onResume()
-        accelerometer?.let {
-            sensorManager.registerListener(
-                shakeDetector,
-                it,
-                SensorManager.SENSOR_DELAY_NORMAL
-            )
-        }
+    private fun createGestureDetector(): GestureDetector {
+        return GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                action() // ricerca una immagine al click
+                return true
+            }
+
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                setWallpaperWithScaleType() // Imposta lo sfondo con un doppio tap
+                return true
+            }
+        })
     }
 
-    /**
-     * Lifecycle method to unregister shake detector
-     */
-    override fun onPause() {
-        super.onPause()
-        sensorManager.unregisterListener(shakeDetector)
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        outState.putString("query", query) // Salva la stringa di ricerca
+        outState.putInt("scaleTypeIndex", currentScaleTypeIndex) // Salva lo scaleType
     }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+
+        query = savedInstanceState.getString("query", "house") // Recupera la query salvata
+        currentScaleTypeIndex = savedInstanceState.getInt("scaleTypeIndex", 0) // Recupera lo ScaleType
+        imageView.scaleType = scaleTypes[currentScaleTypeIndex] // Applica lo ScaleType
+        searchEditText.setText(query) // Aggiorna il campo di ricerca
+    }
+
+
 }
