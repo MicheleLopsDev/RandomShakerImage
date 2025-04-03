@@ -1,0 +1,22 @@
+<!-- res/drawable/ic_flag_england.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Sfondo bianco -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M0,0 h24 v24 h-24 Z" />
+
+    <!-- Croce rossa orizzontale -->
+    <path
+        android:fillColor="#CE2B37"
+        android:pathData="M0,9 h24 v6 h-24 Z" />
+
+    <!-- Croce rossa verticale -->
+    <path
+        android:fillColor="#CE2B37"
+        android:pathData="M9,0 v24 h6 v-24 Z" />
+</vector>
