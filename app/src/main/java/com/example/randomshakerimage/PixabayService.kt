@@ -20,7 +20,7 @@ interface PixabayService {
     suspend fun searchImagesRaw(
         @Query("key") key: String,
         @Query("q") query: String,
-        @Query("per_page") perPage: Int = 100,
+        @Query("per_page") perPage: Int = 200,
         @Query("safesearch") safe: Boolean = false
     ): PixabayResponse
 }

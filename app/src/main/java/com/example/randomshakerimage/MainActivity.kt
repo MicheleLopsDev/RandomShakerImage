@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
-import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -18,7 +17,6 @@ import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -32,37 +30,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.random.Random
+import androidx.core.graphics.createBitmap
 
-/**
- * MainActivity for the Random Shaker Image app
- * Allows users to search and display random images with shake and zoom interactions
- * Loads Pixabay API key from properties file
- */
 class MainActivity : AppCompatActivity() {
 
-    // Crea un'istanza dell'API di MyMemory utilizzando il client Retrofit creato in RetrofitClient
     private var myMemoryApi = MyMemoryClient.create()
 
-    // UI components
     private lateinit var searchEditText: EditText
     private lateinit var searchButton: ImageButton
     private lateinit var imageView: ImageView
-    private lateinit var radioGroup: RadioGroup
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
-
-    // GestureDetector, creato tramite una funzione dedicata
     private lateinit var gestureDetector: GestureDetector
 
-
-    // Search query management
-    private var query = "house"
-
-    // Pixabay API key
+    private var query = "lingerie"
     private var pixabayApiKey: String? = null
     private var currentScaleTypeIndex = 0
 
-    // Array con i diversi ScaleType che vogliamo ciclare
     private val scaleTypes = arrayOf(
         ImageView.ScaleType.CENTER_CROP,
         ImageView.ScaleType.FIT_CENTER,
@@ -76,34 +60,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Edit toolbar colour
         setupToolBar()
-
-        // Load API key from properties
         loadApiKey()
-
-        // Initialize UI components
         initializeUIComponents()
-
     }
 
     private fun setupToolBar() {
         setContentView(R.layout.activity_main)
-
-        // Check if we're running on Android 10 (API level 29) or higher
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.statusBarColor = ContextCompat.getColor(this, android.R.color.black)
-            //make sure you can see the icon in the status bar
-            window.decorView.windowInsetsController?.setSystemBarsAppearance(
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            )
-        }
+        window.statusBarColor = ContextCompat.getColor(this, android.R.color.black)
+        window.decorView.windowInsetsController?.setSystemBarsAppearance(
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+        )
     }
 
-    /**
-     * Load Pixabay API key from properties file
-     */
     private fun loadApiKey() {
         pixabayApiKey = ApiKeyConfig.loadApiKey(
             context = this,
@@ -111,31 +81,21 @@ class MainActivity : AppCompatActivity() {
             key = "PIXABAY_API_KEY"
         )
 
-        // Optionally show a toast if API key is not found
         if (pixabayApiKey == null) {
             Toast.makeText(
                 this,
-                "Warning: Pixabay API key not found",
+                getString(R.string.toast_pixabay_key_missing),
                 Toast.LENGTH_LONG
             ).show()
         }
     }
 
-    /**
-     * Initialize UI components and set initial query
-     */
     private fun initializeUIComponents() {
-
-        setContentView(R.layout.activity_main)
-
         drawerLayout = findViewById(R.id.drawer_layout)
-
         imageView = findViewById(R.id.imageView)
         searchEditText = findViewById(R.id.searchEditText)
         searchButton = findViewById(R.id.imageButton)
         searchEditText.setText(query)
-        radioGroup = findViewById(R.id.languageRadioGroup)
-
         navigationView = findViewById(R.id.navigation_view)
 
         navigationView.setNavigationItemSelectedListener { menuItem ->
@@ -152,31 +112,26 @@ class MainActivity : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.START)
             true
         }
+
         imageView.scaleType = scaleTypes[currentScaleTypeIndex]
-
-        // Crea il GestureDetector usando la funzione separata
+        currentScaleTypeIndex = scaleTypes.indexOf(imageView.scaleType)
         gestureDetector = createGestureDetector()
-
-
-        // Imposta l'OnTouchListener sull'ImageView per usare il GestureDetector
         imageView.setOnTouchListener { _, event ->
             gestureDetector.onTouchEvent(event)
             true
         }
 
-        searchEditText.setOnEditorActionListener(
-            { _, actionId, _ ->
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    action()
-                    return@setOnEditorActionListener true
-                }
-                false
+        searchEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                action()
+                return@setOnEditorActionListener true
             }
-        )
+            false
+        }
 
-        // Configure search button behavior
         searchButton.setOnClickListener {
-            action()
+            vibrate()
+            translate()
         }
     }
 
@@ -186,24 +141,15 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "Search started for: $searchQuery")
             query = searchQuery
             vibrate()
-            searchText()
-
+            loadRandomImage()
         } else {
             Log.w("MainActivity", "Search field is empty!")
             Toast.makeText(
                 this,
-                "Please enter a search term",
+                getString(R.string.toast_enter_search_term),
                 Toast.LENGTH_SHORT
             ).show()
         }
-    }
-
-
-
-    private fun changeScaleType() {
-        currentScaleTypeIndex = (currentScaleTypeIndex + 1) % scaleTypes.size
-        imageView.scaleType = scaleTypes[currentScaleTypeIndex]
-        Toast.makeText(this, "ScaleType: ${scaleTypes[currentScaleTypeIndex]}", Toast.LENGTH_SHORT).show()
     }
 
     private fun setWallpaperWithScaleType() {
@@ -214,18 +160,34 @@ class MainActivity : AppCompatActivity() {
         val screenWidth = wallpaperManager.desiredMinimumWidth
         try {
             val screenHeight = wallpaperManager.desiredMinimumHeight
-
-            val transformedBitmap = transformBitmapToScaleType(originalBitmap, screenWidth, screenHeight, imageView.scaleType)
-
+            val transformedBitmap = transformBitmapToScaleType(
+                originalBitmap,
+                screenWidth,
+                screenHeight,
+                imageView.scaleType
+            )
             wallpaperManager.setBitmap(transformedBitmap)
-            Toast.makeText(this, "Sfondo impostato con ${imageView.scaleType}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                getString(R.string.toast_wallpaper_set, imageView.scaleType),
+                Toast.LENGTH_SHORT
+            ).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Errore nell'impostazione dello sfondo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                getString(R.string.toast_wallpaper_error),
+                Toast.LENGTH_SHORT
+            ).show()
             e.printStackTrace()
         }
     }
 
-    private fun transformBitmapToScaleType(bitmap: Bitmap, width: Int, height: Int, scaleType: ImageView.ScaleType): Bitmap {
+    private fun transformBitmapToScaleType(
+        bitmap: Bitmap,
+        width: Int,
+        height: Int,
+        scaleType: ImageView.ScaleType
+    ): Bitmap {
         val matrix = Matrix()
         val scaleX = width.toFloat() / bitmap.width
         val scaleY = height.toFloat() / bitmap.height
@@ -245,9 +207,7 @@ class MainActivity : AppCompatActivity() {
                 val newY = (height - bitmap.height * scale) / 2
                 matrix.postTranslate(newX, newY)
             }
-            ImageView.ScaleType.FIT_XY -> {
-                matrix.postScale(scaleX, scaleY)
-            }
+            ImageView.ScaleType.FIT_XY -> matrix.postScale(scaleX, scaleY)
             ImageView.ScaleType.CENTER_INSIDE -> {
                 val scale = minOf(scaleX, scaleY, 1f)
                 matrix.postScale(scale, scale)
@@ -261,7 +221,6 @@ class MainActivity : AppCompatActivity() {
                 matrix.postTranslate(newX, newY)
             }
             ImageView.ScaleType.MATRIX -> {
-                // Esempio: ruota di 45 gradi e scala al 75%
                 matrix.postScale(0.75f, 0.75f)
                 matrix.postRotate(45f, bitmap.width / 2f, bitmap.height / 2f)
                 matrix.postTranslate((width - bitmap.width) / 2f, (height - bitmap.height) / 2f)
@@ -279,38 +238,35 @@ class MainActivity : AppCompatActivity() {
             else -> return bitmap
         }
 
-        val outputBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val outputBitmap = createBitmap(width, height)
         val canvas = Canvas(outputBitmap)
-        canvas.drawColor(Color.BLACK) // Sfondo nero per le aree vuote
+        canvas.drawColor(Color.BLACK)
         canvas.drawBitmap(bitmap, matrix, null)
-
         return outputBitmap
     }
 
-    fun removeHtmlTags(input: String): String {
-        // Usa una regex per rimuovere i tag HTML/XML
+    private fun removeHtmlTags(input: String): String {
         return input.replace(Regex("<.*?>"), "")
     }
 
-
-    private fun searchText() {
+    private fun translate() {
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val translationResponse: MyMemoryResponse = withContext(Dispatchers.IO) {
-                    myMemoryApi.getTranslation(query)  // Chiamata al metodo nell'interfaccia MyMemoryService
-                }
-                if (radioGroup.checkedRadioButtonId == R.id.italianoRadioButton) {
+                query = searchEditText.text.toString().trim().replace(' ', '+')
+
+                if (query.isNotEmpty()) {
+                    val translationResponse: MyMemoryResponse = withContext(Dispatchers.IO) {
+                        myMemoryApi.getTranslation(query)
+                    }
                     if (translationResponse.responseStatus == 200) {
                         val translatedText = translationResponse.responseData.translatedText
                         if (translatedText != query) {
                             query = removeHtmlTags(translatedText).trim()
                                 .lowercase(Locale.getDefault())
-                            searchEditText = findViewById(R.id.searchEditText)
-                            searchEditText.setText(query)
+                            searchEditText.setText(query.replace('+', ' '))
                         }
-                        radioGroup.check(R.id.englishRadioButton)
-                        loadRandomImage()
                         Log.d("MainActivity", "Translated Text: $translatedText")
+                        loadRandomImage()
                     } else {
                         Log.e(
                             "MainActivity",
@@ -318,7 +274,12 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 } else {
-                    loadRandomImage()
+                    Log.w("MainActivity", "Search field is empty!")
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.toast_enter_search_term),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error: ${e.message}")
@@ -326,16 +287,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Load a random image from Pixabay based on current query
-     */
     private fun loadRandomImage() {
-        // Check if API key is available
         val apiKey = pixabayApiKey
         if (apiKey == null) {
             Toast.makeText(
                 this,
-                "Cannot load image: API key missing",
+                getString(R.string.toast_cannot_load_image),
                 Toast.LENGTH_SHORT
             ).show()
             return
@@ -353,10 +310,11 @@ class MainActivity : AppCompatActivity() {
                     val randomImage = images[Random.nextInt(images.size)]
                     val imageUrl = randomImage.largeImageURL
 
-                    // Update UI on main thread
                     withContext(Dispatchers.Main) {
                         Glide.with(this@MainActivity)
                             .load(imageUrl)
+                            .placeholder(R.drawable.place_holder)
+                            .error(R.drawable.error)
                             .into(imageView)
                     }
                 } else {
@@ -364,7 +322,7 @@ class MainActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         Toast.makeText(
                             this@MainActivity,
-                            "No images found for '$query'",
+                            getString(R.string.toast_no_images_found, query),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -374,7 +332,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
                         this@MainActivity,
-                        "Error loading image: ${e.message}",
+                        getString(R.string.toast_error_loading_image, e.message ?: "Unknown error"),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -382,9 +340,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Trigger device vibration when button or shake occurs
-     */
     private fun vibrate() {
         val vibratorService = getSystemService(VIBRATOR_SERVICE) as Vibrator
         if (vibratorService.hasVibrator()) {
@@ -394,19 +349,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    /**
-     * Crea e restituisce un GestureDetector configurato per cambiare lo ScaleType dell'ImageView.
-     */
     private fun createGestureDetector(): GestureDetector {
         return GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                action() // ricerca una immagine al click
+                action()
                 return true
             }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {
-                setWallpaperWithScaleType() // Imposta lo sfondo con un doppio tap
+                setWallpaperWithScaleType()
                 return true
             }
         })
@@ -414,19 +365,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-
-        outState.putString("query", query) // Salva la stringa di ricerca
-        outState.putInt("scaleTypeIndex", currentScaleTypeIndex) // Salva lo scaleType
+        outState.putString("query", query)
+        outState.putInt("scaleTypeIndex", currentScaleTypeIndex)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
-
-        query = savedInstanceState.getString("query", "house") // Recupera la query salvata
-        currentScaleTypeIndex = savedInstanceState.getInt("scaleTypeIndex", 0) // Recupera lo ScaleType
-        imageView.scaleType = scaleTypes[currentScaleTypeIndex] // Applica lo ScaleType
-        searchEditText.setText(query) // Aggiorna il campo di ricerca
+        query = savedInstanceState.getString("query", "house")
+        currentScaleTypeIndex = savedInstanceState.getInt("scaleTypeIndex", 0)
+        imageView.scaleType = scaleTypes[currentScaleTypeIndex]
+        currentScaleTypeIndex = scaleTypes.indexOf(imageView.scaleType)
+        searchEditText.setText(query.replace('+', ' '))
     }
-
-
 }

@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">RandomShakerImage</string>
+
+    <!-- Toast messages -->
+    <string name="toast_pixabay_key_missing">Warning: Pixabay API key not found</string>
+    <string name="toast_enter_search_term">Please enter a search term</string>
+    <string name="toast_wallpaper_set">Sfondo impostato con %1$s</string>
+    <string name="toast_wallpaper_error">Errore nell\'impostazione dello sfondo</string>
+    <string name="toast_cannot_load_image">Cannot load image: API key missing</string>
+    <string name="toast_no_images_found">No images found for %1$s</string>
+    <string name="toast_error_loading_image">Error loading image: %1$s</string>
 </resources>

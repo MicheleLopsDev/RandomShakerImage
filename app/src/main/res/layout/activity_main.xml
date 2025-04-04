@@ -8,9 +8,7 @@
     android:background="@color/white"
     tools:context=".MainActivity">
 
-    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/white"
@@ -24,10 +22,10 @@
             android:layout_height="match_parent"
             android:adjustViewBounds="true"
             android:contentDescription="Immagine di sfondo"
-            android:scaleType="matrix"
-            android:src="@drawable/yuri_alenkov_dager"
+            android:scaleType="centerCrop"
+            android:src="@drawable/place_holder"
             android:visibility="visible"
-            tools:src="@drawable/yuri_alenkov_dager" />
+            tools:src="@drawable/place_holder" />
 
         <!-- Barra di ricerca con il pulsante -->
         <LinearLayout
@@ -35,15 +33,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
-            android:layout_marginLeft="48dp"
-            android:layout_marginTop="48dp"
-            android:layout_marginRight="48dp"
+            android:layout_marginLeft="12dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginRight="12dp"
             android:layout_marginBottom="0dp"
             android:background="@android:color/transparent"
             android:gravity="center_horizontal"
             android:orientation="horizontal"
             android:padding="4dp"
-            android:weightSum="100">
+            android:weightSum="140">
 
             <!-- Campo di testo per la ricerca -->
             <EditText
@@ -51,7 +49,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:layout_weight="90"
+                android:layout_weight="120"
                 android:background="@drawable/rounded_edittext"
                 android:hint="Cerca..."
                 android:padding="4dp"
@@ -66,37 +64,11 @@
                 android:layout_height="match_parent"
                 android:layout_weight="10"
                 android:background="@android:color/transparent"
-                app:srcCompat="@drawable/baseline_search_24" />
+                app:srcCompat="@drawable/flag_uk" />
 
         </LinearLayout>
 
         <!-- RadioGroup con margine superiore ridotto per avvicinarlo ulteriormente alla searchBar -->
-        <RadioGroup
-            android:id="@+id/languageRadioGroup"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/searchBar"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="0dp"
-            android:orientation="horizontal">
-
-            <RadioButton
-                android:id="@+id/englishRadioButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:drawableLeft="@drawable/flag_uk"
-                android:text="English" />
-
-            <RadioButton
-                android:id="@+id/italianoRadioButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:drawableLeft="@drawable/flag_it"
-                android:text="Italiano" />
-
-        </RadioGroup>
 
     </RelativeLayout>
     <!-- Menu laterale per selezionare lo ScaleType -->
