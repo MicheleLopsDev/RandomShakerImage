@@ -17,9 +17,11 @@ import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.bumptech.glide.Glide
@@ -29,8 +31,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
-import kotlin.random.Random
-import androidx.core.graphics.createBitmap
 
 class MainActivity : AppCompatActivity() {
 
@@ -46,6 +46,10 @@ class MainActivity : AppCompatActivity() {
     private var query = "lingerie"
     private var pixabayApiKey: String? = null
     private var currentScaleTypeIndex = 0
+
+    private var currentImageList: List<PixabayImage> = emptyList()
+    private var currentImageIndex: Int = 0
+
 
     private val scaleTypes = arrayOf(
         ImageView.ScaleType.CENTER_CROP,
@@ -132,7 +136,45 @@ class MainActivity : AppCompatActivity() {
         searchButton.setOnClickListener {
             vibrate()
             translate()
+
         }
+
+// Listener per la freccia sinistra
+        findViewById<ImageButton>(R.id.btn_arrow_left).setOnClickListener {
+            if (currentImageList.isNotEmpty() && currentImageIndex > 0) {
+                currentImageIndex--
+                displayImage(currentImageList[currentImageIndex])
+            } else {
+                Toast.makeText(this, getString(R.string.arrow_left), Toast.LENGTH_SHORT).show()
+            }
+            updateResultsInfo()
+        }
+
+// Listener per la freccia destra
+        findViewById<ImageButton>(R.id.btn_arrow_right).setOnClickListener {
+            if (currentImageList.isNotEmpty() && currentImageIndex < currentImageList.size - 1) {
+                currentImageIndex++
+                displayImage(currentImageList[currentImageIndex])
+                updateResultsInfo()
+            } else {
+                Toast.makeText(this, getString(R.string.arrow_right), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+// Listener per il pulsante Home
+        findViewById<ImageButton>(R.id.btn_home).setOnClickListener {
+            if (currentImageList.isNotEmpty()) {
+                // Azione Home: resetta l'indice a 0 per tornare alla prima immagine
+                currentImageIndex = 0
+                displayImage(currentImageList[currentImageIndex])
+            } else {
+                // Se non ci sono immagini, carica la lista per navigazione
+                loadImageListForNavigation()
+            }
+
+        }
+
+
     }
 
     private fun action() {
@@ -141,7 +183,7 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "Search started for: $searchQuery")
             query = searchQuery
             vibrate()
-            loadRandomImage()
+            loadImageListForNavigation()
         } else {
             Log.w("MainActivity", "Search field is empty!")
             Toast.makeText(
@@ -266,7 +308,7 @@ class MainActivity : AppCompatActivity() {
                             searchEditText.setText(query.replace('+', ' '))
                         }
                         Log.d("MainActivity", "Translated Text: $translatedText")
-                        loadRandomImage()
+                        loadImageListForNavigation()
                     } else {
                         Log.e(
                             "MainActivity",
@@ -287,59 +329,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadRandomImage() {
-        val apiKey = pixabayApiKey
-        if (apiKey == null) {
-            Toast.makeText(
-                this,
-                getString(R.string.toast_cannot_load_image),
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
-
-        Log.d("MainActivity", "Changing image...")
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val response = PixaBayClient.pixabayService.searchImagesRaw(
-                    key = apiKey,
-                    query = query
-                )
-                val images = response.hits
-                if (images.isNotEmpty()) {
-                    val randomImage = images[Random.nextInt(images.size)]
-                    val imageUrl = randomImage.largeImageURL
-
-                    withContext(Dispatchers.Main) {
-                        Glide.with(this@MainActivity)
-                            .load(imageUrl)
-                            .placeholder(R.drawable.place_holder)
-                            .error(R.drawable.error)
-                            .into(imageView)
-                    }
-                } else {
-                    Log.e("MainActivity", "No images found for query: $query")
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            getString(R.string.toast_no_images_found, query),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error during request: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        getString(R.string.toast_error_loading_image, e.message ?: "Unknown error"),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
-    }
-
     private fun vibrate() {
         val vibratorService = getSystemService(VIBRATOR_SERVICE) as Vibrator
         if (vibratorService.hasVibrator()) {
@@ -352,7 +341,7 @@ class MainActivity : AppCompatActivity() {
     private fun createGestureDetector(): GestureDetector {
         return GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                action()
+                super.onSingleTapConfirmed(e)
                 return true
             }
 
@@ -377,4 +366,70 @@ class MainActivity : AppCompatActivity() {
         currentScaleTypeIndex = scaleTypes.indexOf(imageView.scaleType)
         searchEditText.setText(query.replace('+', ' '))
     }
+
+    private fun loadImageListForNavigation() {
+        val apiKey = pixabayApiKey
+        if (apiKey == null) {
+            Toast.makeText(
+                this,
+                getString(R.string.toast_cannot_load_image),
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        Log.d("MainActivity", "Caricamento lista immagini per navigazione...")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = PixaBayClient.pixabayService.searchImagesRaw(
+                    key = apiKey,
+                    query = query
+                )
+                val images = response.hits
+                withContext(Dispatchers.Main) {
+                    if (images.isNotEmpty()) {
+                        currentImageList = images
+                        currentImageIndex = 0
+                        displayImage(currentImageList[currentImageIndex])
+                        updateResultsInfo()
+                    } else {
+                        Log.e("MainActivity", "Nessuna immagine trovata per la query: $query")
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.toast_no_images_found, query),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Errore durante il caricamento: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.toast_error_loading_image, e.message ?: "Unknown error"),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+
+    private fun displayImage(image: PixabayImage) {
+        Glide.with(this@MainActivity)
+            .load(image.largeImageURL)
+            .placeholder(R.drawable.place_holder)
+            .error(R.drawable.error)
+            .into(imageView)
+    }
+
+    private fun updateResultsInfo() {
+        // Aggiorna il TextView con il numero totale di immagini e l'indice corrente (aggiungi 1 perché l'indice parte da 0)
+        val totalResults = currentImageList.size
+        val currentDisplayed = if (totalResults > 0) currentImageIndex + 1 else 0
+        findViewById<TextView>(R.id.tv_results_info).text =
+            getString(R.string.results_info, totalResults, currentDisplayed)
+    }
+
+
 }
